@@ -32,8 +32,8 @@ struct TVec2<T>
 	y :T,
 }
 
-type Vec2 = TVec2<usize>;
-type Vec2i = TVec2<isize>;
+type Vec2 = TVec2<isize>;
+//type Vec2u = TVec2<usize>; // ended up not needed
 
 impl<T> TVec2<T>
 {
@@ -68,20 +68,23 @@ struct Grid {
 }
 
 impl Grid {
-	fn build(&mut self) {
-		self.grid = vec![false; self.size.x * self.size.y];
+	fn new(size :Vec2, origin :Vec2) -> Grid {
+		let elms = size.x * size.y;
+		return Grid {
+			grid : vec![false; elms as usize],
+			size,
+			origin,
+		};
 	}
-	fn set(&mut self, pos :Vec2i) {
-		let origin = Vec2i { x : self.origin.x as isize, y : self.origin.y as isize, };
-		let pos = origin + pos;
-		let pos = Vec2 { x : pos.x as usize, y : pos.y as usize, };
-		self.grid[pos.x + pos.y * self.size.x] = true;
+	fn set(&mut self, pos :Vec2) {
+		let pos = self.origin + pos;
+		let index = pos.x + pos.y * self.size.x;
+		self.grid[index as usize] = true;
 	}
-	fn get(&self, pos :Vec2i) -> bool {
-		let origin = Vec2i { x : self.origin.x as isize, y : self.origin.y as isize, };
-		let pos = origin + pos;
-		let pos = Vec2 { x : pos.x as usize, y : pos.y as usize, };
-		return self.grid[pos.x + pos.y * self.size.x];
+	fn get(&self, pos :Vec2) -> bool {
+		let pos = self.origin + pos;
+		let index = pos.x + pos.y * self.size.x;
+		return self.grid[index as usize];
 	}
 }
 
@@ -165,30 +168,62 @@ fn load_wires() -> Vec<Wire>
 }
 
 
-// Calculate the smallest grid required to fit a wire
-fn smallest_grid(wire :&Wire) -> Grid
+// Calculate the smallest extents required to fit a wire
+struct Extents {
+	up_right :Vec2,
+	down_left :Vec2,
+}
+fn smallest_extents(wire :&Wire) -> Extents
 {
-	// Note: this doesn't actually calculate the smallest due to unsigned
-	// warnings in rust
+	// Grow the extents in opposite directions
 	let mut ur_extents = Vec2::new(0,0);
 	let mut dl_extents = Vec2::new(0,0);
 	wire.for_each(&mut |segment| {
 		match segment
 		{
-			WireSegment::Up(dist) => ur_extents.y += dist,
-			WireSegment::Down(dist) => dl_extents.y += dist,
-			WireSegment::Left(dist) => ur_extents.x += dist,
-			WireSegment::Right(dist) => dl_extents.x += dist,
+			WireSegment::Up(dist) => ur_extents.y += *dist as isize,
+			WireSegment::Down(dist) => dl_extents.y += *dist as isize,
+			WireSegment::Left(dist) => ur_extents.x += *dist as isize,
+			WireSegment::Right(dist) => dl_extents.x += *dist as isize,
 		}
 	});
 	
+	return Extents {
+		up_right : ur_extents,
+		down_left :dl_extents,
+	};
+}
+
+
+// Combine 2 wires to make a grid they can both fit on
+fn combine_wires(wires :&Vec<Wire>) -> Grid {
+	// Calculate the smallest extents required to fit both wires
+	let extents1 = smallest_extents(&wires[0]);
+	let extents2 = smallest_extents(&wires[1]);
+	
+	// Find the max extents in both directions
+	let ur_extents = Vec2 {
+		x : std::cmp::max(extents1.up_right.x, extents2.up_right.x),
+		y : std::cmp::max(extents1.up_right.y, extents2.up_right.y),
+	};
+	let dl_extents = Vec2 {
+		x : std::cmp::max(extents1.down_left.x, extents2.down_left.x),
+		y : std::cmp::max(extents1.down_left.y, extents2.down_left.y),
+	};
+	
 	// Add the extents together to get the total. down-left will give us the
 	// offset of the origin.
-	return Grid {
-		grid :Vec::new(),
-		size : ur_extents + dl_extents,
-		origin :dl_extents,
-	};
+	return Grid::new(ur_extents + dl_extents, dl_extents);
+}
+
+
+// A simple lambda to pass over all grid points in a WireSegment
+fn for_segment<Func>(lambda :&mut Func, dist :&usize)
+	where Func : FnMut()
+{
+	for _ in 0..*dist {
+		lambda();
+	}
 }
 
 
@@ -197,91 +232,58 @@ fn part1() -> usize
 	let wires = load_wires();
 	assert_eq!(wires.len(), 2);
 	
-	// Calculate the smallest grid required to fit both wires
-	let grid1 = smallest_grid(&wires[0]);
-	let grid2 = smallest_grid(&wires[1]);
-	let size = Vec2 {
-		x : std::cmp::max(grid1.size.x, grid2.size.x),
-		y : std::cmp::max(grid1.size.y, grid2.size.y),
-	};
-	let origin = Vec2 {
-		x : std::cmp::max(grid1.origin.x, grid2.origin.x),
-		y : std::cmp::max(grid1.origin.y, grid2.origin.y),
-	};
-	let mut grid = Grid {
-		grid :Vec::new(),
-		size,
-		origin,
-	};
-	
-	// Create the grid we'll use
-	grid.build();
+	// Build a grid that fits both wires
+	let mut grid = combine_wires(&wires);
 	
 	// Set all the points on one wire
-	let mut pos = Vec2i::new(0,0);
+	let mut pos = Vec2::new(0,0);
 	grid.set(pos);
 	wires[0].for_each(&mut |segment| {
-		// TODO: there must be a neater way of repeating these loops...
 		match segment
 		{
-			WireSegment::Up(dist) => {
-				for _ in 0..*dist {
+			WireSegment::Up(dist) => for_segment(&mut || {
 					pos.y += 1;
 					grid.set(pos);
-				}
-			},
-			WireSegment::Down(dist) => {
-				for _ in 0..*dist {
+				}, dist),
+			WireSegment::Down(dist) => for_segment(&mut || {
 					pos.y -= 1;
 					grid.set(pos);
-				}
-			},
-			WireSegment::Left(dist) => {
-				for _ in 0..*dist {
+				}, dist),
+			WireSegment::Left(dist) => for_segment(&mut || {
 					pos.x -= 1;
 					grid.set(pos);
-				}
-			},
-			WireSegment::Right(dist) => {
-				for _ in 0..*dist {
+				}, dist),
+			WireSegment::Right(dist) => for_segment(&mut || {
 					pos.x += 1;
 					grid.set(pos);
-				}
-			},
+				}, dist),
 		}
 	});
 	
+	// Reset the position for the next wire
+	pos = Vec2::new(0,0);
+	
 	// Go through it again, but this time check for any that are already set
-	let mut crossovers :Vec<Vec2i> = Vec::new();
-	pos = Vec2i::new(0,0);
+	let mut crossovers :Vec<Vec2> = Vec::new();
 	wires[1].for_each(&mut |segment| {
-		// TODO: there must be a neater way of repeating these loops...
 		match segment
 		{
-			WireSegment::Up(dist) => {
-				for _ in 0..*dist {
+			WireSegment::Up(dist) => for_segment(&mut || {
 					pos.y += 1;
 					if grid.get(pos) { crossovers.push(pos); }
-				}
-			},
-			WireSegment::Down(dist) => {
-				for _ in 0..*dist {
+				}, dist),
+			WireSegment::Down(dist) => for_segment(&mut || {
 					pos.y -= 1;
 					if grid.get(pos) { crossovers.push(pos); }
-				}
-			},
-			WireSegment::Left(dist) => {
-				for _ in 0..*dist {
+				}, dist),
+			WireSegment::Left(dist) => for_segment(&mut || {
 					pos.x -= 1;
 					if grid.get(pos) { crossovers.push(pos); }
-				}
-			},
-			WireSegment::Right(dist) => {
-				for _ in 0..*dist {
+				}, dist),
+			WireSegment::Right(dist) => for_segment(&mut || {
 					pos.x += 1;
 					if grid.get(pos) { crossovers.push(pos); }
-				}
-			},
+				}, dist),
 		}
 	});
 	
