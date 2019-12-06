@@ -18,10 +18,21 @@
  *
  *
  * Part 2:
+ *
+ * To do this, calculate the number of steps each wire takes to reach each
+ * intersection; choose the intersection where the sum of both wires' steps is
+ * lowest. If a wire visits a position on the grid multiple times, use the
+ * steps value from the first time it visits that position when calculating the
+ * total value of a specific intersection.
+ *
+ * The number of steps a wire takes is the total number of grid squares the
+ * wire has entered to get to that location, including the intersection being
+ * considered.
  */
 
 use std::error::Error;
 use std::ops::Add;
+use std::default::Default;
 
 
 // Simple vec2 struct
@@ -61,27 +72,30 @@ where
 
 // A grid where the origin may not be at (0,0).
 // Use get() and set() to get to the actual data.
-struct Grid {
-	grid :Vec<bool>,
+struct Grid<T> {
+	grid :Vec<T>,
 	size :Vec2,
 	origin :Vec2,
 }
 
-impl Grid {
-	fn new(size :Vec2, origin :Vec2) -> Grid {
+impl<T> Grid<T>
+where
+	T: Copy + Clone + Default
+{
+	fn new(size :Vec2, origin :Vec2) -> Grid<T> {
 		let elms = size.x * size.y;
-		return Grid {
-			grid : vec![false; elms as usize],
+		return Grid::<T> {
+			grid : vec![Default::default(); elms as usize],
 			size,
 			origin,
 		};
 	}
-	fn set(&mut self, pos :Vec2) {
+	fn set(&mut self, pos :Vec2, value :T) {
 		let pos = self.origin + pos;
 		let index = pos.x + pos.y * self.size.x;
-		self.grid[index as usize] = true;
+		self.grid[index as usize] = value;
 	}
-	fn get(&self, pos :Vec2) -> bool {
+	fn get(&self, pos :Vec2) -> T {
 		let pos = self.origin + pos;
 		let index = pos.x + pos.y * self.size.x;
 		return self.grid[index as usize];
@@ -196,7 +210,10 @@ fn smallest_extents(wire :&Wire) -> Extents
 
 
 // Combine 2 wires to make a grid they can both fit on
-fn combine_wires(wires :&Vec<Wire>) -> Grid {
+fn combine_wires<T>(wires :&Vec<Wire>) -> Grid<T>
+where
+	T: Copy + Clone + Default
+{
 	// Calculate the smallest extents required to fit both wires
 	let extents1 = smallest_extents(&wires[0]);
 	let extents2 = smallest_extents(&wires[1]);
@@ -233,29 +250,29 @@ fn part1() -> usize
 	assert_eq!(wires.len(), 2);
 	
 	// Build a grid that fits both wires
-	let mut grid = combine_wires(&wires);
+	let mut grid = combine_wires::<bool>(&wires);
 	
 	// Set all the points on one wire
 	let mut pos = Vec2::new(0,0);
-	grid.set(pos);
+	grid.set(pos, true);
 	wires[0].for_each(&mut |segment| {
 		match segment
 		{
 			WireSegment::Up(dist) => for_segment(&mut || {
 					pos.y += 1;
-					grid.set(pos);
+					grid.set(pos, true);
 				}, dist),
 			WireSegment::Down(dist) => for_segment(&mut || {
 					pos.y -= 1;
-					grid.set(pos);
+					grid.set(pos, true);
 				}, dist),
 			WireSegment::Left(dist) => for_segment(&mut || {
 					pos.x -= 1;
-					grid.set(pos);
+					grid.set(pos, true);
 				}, dist),
 			WireSegment::Right(dist) => for_segment(&mut || {
 					pos.x += 1;
-					grid.set(pos);
+					grid.set(pos, true);
 				}, dist),
 		}
 	});
