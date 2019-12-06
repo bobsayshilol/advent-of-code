@@ -36,7 +36,7 @@ use std::default::Default;
 
 
 // Simple vec2 struct
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct TVec2<T>
 {
 	x :T,
@@ -92,11 +92,15 @@ where
 	}
 	fn set(&mut self, pos :Vec2, value :T) {
 		let pos = self.origin + pos;
+		assert!(pos.x < self.size.x);
+		assert!(pos.y < self.size.y);
 		let index = pos.x + pos.y * self.size.x;
 		self.grid[index as usize] = value;
 	}
 	fn get(&self, pos :Vec2) -> T {
 		let pos = self.origin + pos;
+		assert!(pos.x < self.size.x);
+		assert!(pos.y < self.size.y);
 		let index = pos.x + pos.y * self.size.x;
 		return self.grid[index as usize];
 	}
@@ -192,18 +196,26 @@ fn smallest_extents(wire :&Wire) -> Extents
 	// Grow the extents in opposite directions
 	let mut ur_extents = Vec2::new(0,0);
 	let mut dl_extents = Vec2::new(0,0);
+	let mut pos = Vec2::new(0,0);
 	wire.for_each(&mut |segment| {
+		// Move the current position
 		match segment
 		{
-			WireSegment::Up(dist) => ur_extents.y += *dist as isize,
-			WireSegment::Down(dist) => dl_extents.y += *dist as isize,
-			WireSegment::Left(dist) => ur_extents.x += *dist as isize,
-			WireSegment::Right(dist) => dl_extents.x += *dist as isize,
+			WireSegment::Up(dist) => pos.y += *dist as isize,
+			WireSegment::Down(dist) => pos.y -= *dist as isize,
+			WireSegment::Left(dist) => pos.x -= *dist as isize,
+			WireSegment::Right(dist) => pos.x += *dist as isize,
 		}
+		
+		// See if we reached new territory
+		ur_extents.x = std::cmp::max(pos.x, ur_extents.x);
+		ur_extents.y = std::cmp::max(pos.y, ur_extents.y);
+		dl_extents.x = std::cmp::max(-pos.x, dl_extents.x);
+		dl_extents.y = std::cmp::max(-pos.y, dl_extents.y);
 	});
 	
 	return Extents {
-		up_right : ur_extents,
+		up_right :ur_extents,
 		down_left :dl_extents,
 	};
 }
@@ -220,13 +232,16 @@ where
 	
 	// Find the max extents in both directions
 	let ur_extents = Vec2 {
-		x : std::cmp::max(extents1.up_right.x, extents2.up_right.x),
-		y : std::cmp::max(extents1.up_right.y, extents2.up_right.y),
+		x : std::cmp::max(extents1.up_right.x, extents2.up_right.x) + 1,
+		y : std::cmp::max(extents1.up_right.y, extents2.up_right.y) + 1,
 	};
 	let dl_extents = Vec2 {
-		x : std::cmp::max(extents1.down_left.x, extents2.down_left.x),
-		y : std::cmp::max(extents1.down_left.y, extents2.down_left.y),
+		x : std::cmp::max(extents1.down_left.x, extents2.down_left.x) + 1,
+		y : std::cmp::max(extents1.down_left.y, extents2.down_left.y) + 1,
 	};
+	
+	// TODO: we know that there can't be any crossovers where only one wire can
+	// get to, so we should really be looking for the minimum of the above...
 	
 	// Add the extents together to get the total. down-left will give us the
 	// offset of the origin.
@@ -319,4 +334,118 @@ fn part1() -> usize
 fn main()
 {
 	println!("Part1 = {}", part1());
+	println!("Part2 = {}", part2());
+}
+
+
+// The state of a tile in the grid.
+// Should have been Option<> really...
+#[derive(Copy, Clone)]
+enum GridValue {
+	Empty(),
+	Distance(usize),
+}
+
+
+impl Default for GridValue {
+	fn default() -> Self {
+		return GridValue::Empty();
+	}
+}
+
+fn part2() -> usize
+{
+	let wires = load_wires();
+	assert_eq!(wires.len(), 2);
+	
+	// Build a grid that fits both wires, this time using GridValue so that we
+	// can fill out the distances as we go
+	let mut grid = combine_wires::<GridValue>(&wires);
+	
+	// TODO: this code is very similar to part1, but different enough that I
+	// don't see a nice way to combine them
+	
+	// Set all the points on one wire
+	let mut pos = Vec2::new(0,0);
+	let mut distance :usize = 0;
+	wires[0].for_each(&mut |segment| {
+		let mut update_tile = |pos| {
+			distance += 1;
+			// Distance is always incrementing, so only set it if it's empty to
+			// avoid trampling an older value
+			match grid.get(pos) {
+				GridValue::Empty() =>
+					grid.set(pos, GridValue::Distance(distance)),
+				GridValue::Distance(_) =>
+					{},
+			}
+		};
+		match segment
+		{
+			WireSegment::Up(dist) => for_segment(&mut || {
+					pos.y += 1;
+					update_tile(pos);
+				}, dist),
+			WireSegment::Down(dist) => for_segment(&mut || {
+					pos.y -= 1;
+					update_tile(pos);
+				}, dist),
+			WireSegment::Left(dist) => for_segment(&mut || {
+					pos.x -= 1;
+					update_tile(pos);
+				}, dist),
+			WireSegment::Right(dist) => for_segment(&mut || {
+					pos.x += 1;
+					update_tile(pos);
+				}, dist),
+		}
+	});
+	
+	// Reset the position for the next wire
+	pos = Vec2::new(0,0);
+	distance = 0;
+	
+	// Go through it again, but this time check for any that are already set
+	let mut crossovers :Vec<usize> = Vec::new();
+	wires[1].for_each(&mut |segment| {
+		let mut update_tile = |pos| {
+			distance += 1;
+			match grid.get(pos) {
+				// Nothing to do if there's nothing there
+				GridValue::Empty() =>
+					{},
+				// We have a distance, so add the combination to the crossovers
+				GridValue::Distance(dist) =>
+					crossovers.push(distance + dist),
+			};
+		};
+		match segment
+		{
+			WireSegment::Up(dist) => for_segment(&mut || {
+					pos.y += 1;
+					update_tile(pos);
+				}, dist),
+			WireSegment::Down(dist) => for_segment(&mut || {
+					pos.y -= 1;
+					update_tile(pos);
+				}, dist),
+			WireSegment::Left(dist) => for_segment(&mut || {
+					pos.x -= 1;
+					update_tile(pos);
+				}, dist),
+			WireSegment::Right(dist) => for_segment(&mut || {
+					pos.x += 1;
+					update_tile(pos);
+				}, dist),
+		}
+	});
+	
+	// Find the smallest distance
+	let mut dist :usize = 100000;
+	for d in &crossovers
+	{
+		dist = std::cmp::min(dist, *d);
+	}
+	
+	return dist;
 }
