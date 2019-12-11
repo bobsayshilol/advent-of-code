@@ -85,24 +85,53 @@ fn has_adjacents(pw :Password) -> bool {
 }
 
 
-fn part1(min :usize, max :usize) -> usize {
+fn has_part2_adjacents(pw :Password) -> bool {
+	// Brute force check of each pair and their surroundings
+	fn check_quad(a :usize, b :usize, c :usize, d :usize) -> bool {
+		return b == c && a != b && c != d;
+	};
+	// A value can never be 10, so use that for the edges
+	return
+		check_quad(10, pw.0, pw.1, pw.2) ||
+		check_quad(pw.0, pw.1, pw.2, pw.3) ||
+		check_quad(pw.1, pw.2, pw.3, pw.4) ||
+		check_quad(pw.2, pw.3, pw.4, pw.5) ||
+		check_quad(pw.3, pw.4, pw.5, 10) ;
+}
+
+
+struct Counts {
+	part1 :usize,
+	part2 :usize,
+}
+fn run(min :usize, max :usize) -> Counts {
 	// Brute force!
-	let mut count :usize = 0;
+	let mut part1 :usize = 0;
+	let mut part2 :usize = 0;
 	let mut iter = Some(Password::from_int(min));
 	while let Some(pw) = iter {
 		if pw.as_int() > max {
 			break;
 		}
+		if has_part2_adjacents(pw) {
+			part1 += 1;
+			part2 += 1;
+		}
 		if has_adjacents(pw) {
-			count += 1;
+			part1 += 1;
 		}
 		iter = pw.increment();
 	}
-	return count;
+	return Counts {
+		part1,
+		part2,
+	};
 }
 
 fn main() {
-	println!("Part1 = {}", part1(0, 999999));
+	let result = run(0, 999999);
+	println!("Part1 = {}", result.part1);
+	println!("Part2 = {}", result.part2);
 }
 
 
