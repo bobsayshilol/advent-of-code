@@ -1,0 +1,5 @@
+# Rust
+/Rust/target
+/Rust/inputs
+/Rust/Cargo.lock
+**/*.rs.bk
