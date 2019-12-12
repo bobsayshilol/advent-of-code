@@ -41,7 +41,7 @@ use std::error::Error;
 fn load_inputs() -> Vec<u64>
 {
 	// Load the inputs from file
-	let input = match std::fs::read_to_string("inputs.txt")
+	let input = match std::fs::read_to_string("inputs/day1.txt")
 	{
 		Err(error) => panic!("Failed to open inputs: {}", error.description()),
 		Ok(string) => string,
@@ -116,7 +116,7 @@ fn get_total_part2() -> u64
 }
 
 
-fn main()
+pub fn main()
 {
 	let part1 = get_total_part1();
 	let part2 = get_total_part2();

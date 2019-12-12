@@ -128,7 +128,7 @@ fn run(min :usize, max :usize) -> Counts {
 	};
 }
 
-fn main() {
+pub fn main() {
 	let result = run(0, 999999);
 	println!("Part1 = {}", result.part1);
 	println!("Part2 = {}", result.part2);

@@ -169,7 +169,7 @@ impl Wire {
 fn load_wires() -> Vec<Wire>
 {
 	// Load the input from file
-	let input = match std::fs::read_to_string("input.txt")
+	let input = match std::fs::read_to_string("inputs/day3.txt")
 	{
 		Err(error) => panic!("Failed to open input: {}", error.description()),
 		Ok(string) => string,
@@ -331,7 +331,7 @@ fn part1() -> usize
 }
 
 
-fn main()
+pub fn main()
 {
 	println!("Part1 = {}", part1());
 	println!("Part2 = {}", part2());

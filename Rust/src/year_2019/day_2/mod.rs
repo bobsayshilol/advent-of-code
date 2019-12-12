@@ -50,7 +50,7 @@ use std::error::Error;
 fn load_program() -> Vec<usize>
 {
 	// Load the input from file
-	let input = match std::fs::read_to_string("input.txt")
+	let input = match std::fs::read_to_string("inputs/day2.txt")
 	{
 		Err(error) => panic!("Failed to open input: {}", error.description()),
 		Ok(string) => string,
@@ -147,7 +147,7 @@ fn run_part1() -> usize
 }
 
 
-fn main()
+pub fn main()
 {
 	println!("Part1 = {}", run_part1());
 	println!("Part2 = {}", run_part2());
