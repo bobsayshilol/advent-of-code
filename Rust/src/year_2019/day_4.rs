@@ -17,6 +17,9 @@
  * meet these criteria?
  */
 
+use std::error::Error;
+
+
 
 #[derive(Copy, Clone)]
 struct Password(usize, usize, usize, usize, usize, usize);
@@ -128,8 +131,29 @@ fn run(min :usize, max :usize) -> Counts {
 	};
 }
 
+
+fn get_range() -> [usize; 2]
+{
+	// Load the input from file
+	let input = match std::fs::read_to_string("inputs/day4.txt")
+	{
+		Err(error) => panic!("Failed to open input: {}", error.description()),
+		Ok(string) => string,
+	};
+	
+	// Transform the start and end into integers
+	let output :Vec<usize> = input
+		.trim() // ignore trailing whitespace
+		.split('-') // split on '-'
+		.map(|val| val.parse().unwrap()) // parse each value into a usize
+		.collect(); // combine into a Vec
+	
+	return [output[0], output[1]];
+}
+
 pub fn main() {
-	let result = run(0, 999999);
+	let range = get_range();
+	let result = run(range[0], range[1]);
 	println!("Day4:");
 	println!("\tPart1 = {}", result.part1);
 	println!("\tPart2 = {}", result.part2);
