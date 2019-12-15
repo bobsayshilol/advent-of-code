@@ -120,7 +120,7 @@ fn run(min :usize, max :usize) -> Counts {
 			part1 += 1;
 			part2 += 1;
 		}
-		if has_adjacents(pw) {
+		else if has_adjacents(pw) {
 			part1 += 1;
 		}
 		iter = pw.increment();
