@@ -149,8 +149,9 @@ fn run_part1() -> usize
 
 pub fn main()
 {
-	println!("Part1 = {}", run_part1());
-	println!("Part2 = {}", run_part2());
+	println!("Day3:");
+	println!("\tPart1 = {}", run_part1());
+	println!("\tPart2 = {}", run_part2());
 }
 
 

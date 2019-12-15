@@ -120,5 +120,7 @@ pub fn main()
 {
 	let part1 = get_total_part1();
 	let part2 = get_total_part2();
-	println!("Part1: {}\nPart2: {}", part1, part2);
+	println!("Day1:");
+	println!("\tPart1 = {}", part1);
+	println!("\tPart2 = {}", part2);
 }

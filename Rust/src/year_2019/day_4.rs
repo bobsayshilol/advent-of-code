@@ -130,8 +130,9 @@ fn run(min :usize, max :usize) -> Counts {
 
 pub fn main() {
 	let result = run(0, 999999);
-	println!("Part1 = {}", result.part1);
-	println!("Part2 = {}", result.part2);
+	println!("Day4:");
+	println!("\tPart1 = {}", result.part1);
+	println!("\tPart2 = {}", result.part2);
 }
 
 

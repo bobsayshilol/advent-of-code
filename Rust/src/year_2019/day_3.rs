@@ -333,8 +333,9 @@ fn part1() -> usize
 
 pub fn main()
 {
-	println!("Part1 = {}", part1());
-	println!("Part2 = {}", part2());
+	println!("Day3:");
+	println!("\tPart1 = {}", part1());
+	println!("\tPart2 = {}", part2());
 }
 
 
