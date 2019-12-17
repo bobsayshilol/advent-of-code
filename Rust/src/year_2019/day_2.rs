@@ -44,10 +44,11 @@
 
 
 use std::error::Error;
+use super::intcode::Interpreter;
 
 
 // Load the input into a buffer to be treated as Intcode RAM
-fn load_program() -> Vec<usize>
+fn load_input() -> String
 {
 	// Load the input from file
 	let input = match std::fs::read_to_string("inputs/day2.txt")
@@ -56,94 +57,24 @@ fn load_program() -> Vec<usize>
 		Ok(string) => string,
 	};
 	
-	// Transform the elements into integers
-	let output :Vec<usize> = input
-		.trim() // ignore trailing whitespace
-		.split(',') // split on ','
-		.map(|val| val.parse().unwrap()) // parse each value into a usize
-		.collect(); // combine into a Vec
-	
-	return output;
-}
-
-
-// Pretty print a program (but not that pretty)
-#[allow(dead_code)]
-fn dump_program(program :&Vec<usize>)
-{
-	println!("Program:");
-	for idx in 0..program.len()
-	{
-		print!("{},\t", program[idx]);
-		if (idx & 7) == 7
-		{
-			println!();
-		}
-	}
-	println!();
-}
-
-
-// Runs a prepared program
-fn run_program(program :&mut Vec<usize>)
-{
-	// Program counter starts at 0
-	let mut pc = 0;
-	loop
-	{
-		// Read off the next instruction
-		let ins = program[pc];
-		
-		// Handle the instruction
-		match ins
-		{
-			1 => {
-				// Load the sources and dest
-				let s0 = program[pc + 1];
-				let s1 = program[pc + 2];
-				let d0 = program[pc + 3];
-				
-				// Do the op
-				program[d0] = program[s0] + program[s1];
-			},
-			
-			2 => {
-				// Load the sources and dest
-				let s0 = program[pc + 1];
-				let s1 = program[pc + 2];
-				let d0 = program[pc + 3];
-				
-				// Do the op
-				program[d0] = program[s0] * program[s1];
-			},
-			
-			// Break out
-			99 => break,
-			
-			// This shouldn't happen
-			_ => panic!("Unknown ins: {}", ins),
-		}
-		
-		// Increment to the next ins
-		pc += 4;
-	}
+	return input;
 }
 
 
 fn run_part1() -> usize
 {
 	// Load the program as provided
-	let mut program = load_program();
+	let mut program = Interpreter::load(&load_input());
 	
 	// Modify it as required
-	program[1] = 12;
-	program[2] = 2;
+	program.set(1, 12);
+	program.set(2, 2);
 	
 	// Run it
-	run_program(&mut program);
+	program.run();
 	
 	// Return the first value
-	return program[0];
+	return program.get(0);
 }
 
 
@@ -158,25 +89,25 @@ pub fn main()
 fn run_part2() -> usize
 {
 	// Load the program as provided
-	let program_clean = load_program();
+	let input = load_input();
 	
 	// Brute force it
 	for noun in 0..99
 	{
 		for verb in 0..99
 		{
-			// Make a copy of the program
-			let mut program = program_clean.clone();
+			// Create a new program from the input
+			let mut program = Interpreter::load(&input);
 			
 			// Mutate the program
-			program[1] = noun;
-			program[2] = verb;
+			program.set(1, noun);
+			program.set(2, verb);
 			
 			// Run it
-			run_program(&mut program);
+			program.run();
 			
 			// See if that was what we wanted
-			if program[0] == 19690720
+			if program.get(0) == 19690720
 			{
 				// Return the combined value
 				return noun * 100 + verb;

@@ -1,8 +1,13 @@
+// Modules that the days can use
+mod intcode;
+
+// Days
 mod day_1;
 mod day_2;
 mod day_3;
 mod day_4;
 
+// Entry
 pub fn main() {
 	day_1::main();
 	day_2::main();
