@@ -61,7 +61,7 @@ fn load_input() -> String
 }
 
 
-fn run_part1() -> usize
+fn run_part1() -> isize
 {
 	// Load the program as provided
 	let mut program = Interpreter::load(&load_input());
@@ -80,13 +80,13 @@ fn run_part1() -> usize
 
 pub fn main()
 {
-	println!("Day3:");
+	println!("Day2:");
 	println!("\tPart1 = {}", run_part1());
 	println!("\tPart2 = {}", run_part2());
 }
 
 
-fn run_part2() -> usize
+fn run_part2() -> isize
 {
 	// Load the program as provided
 	let input = load_input();
