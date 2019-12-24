@@ -1,18 +1,29 @@
 /**
- * Intcode interpreter, used by days 2 and 5.
+ * Intcode interpreter, used by multiple days.
  */
 
+
 // The interpreter object
-#[allow(dead_code)]
+#[derive(Clone)]
 pub struct Interpreter {
 	mem : Vec<isize>,
 	pc : usize,
+	next_input : Option<isize>,
+	outputs :Vec<isize>,
+}
+
+
+// The result of an execution
+#[derive(Debug, PartialEq)]
+pub enum StepResult {
+	Continue,
+	Break,
+	Input,
 }
 
 
 impl Interpreter {
 	// Load the input string into a buffer to be treated as Intcode RAM
-	#[allow(dead_code)]
 	pub fn load(input :&str) -> Interpreter {
 		// Transform the elements into integers
 		let mem :Vec<isize> = input
@@ -24,19 +35,31 @@ impl Interpreter {
 		return Interpreter {
 			mem,
 			pc : 0,
+			next_input : None,
+			outputs : Vec::new(),
 		};
 	}
 	
 	// Set a value in memory
-	#[allow(dead_code)]
 	pub fn set(self :&mut Interpreter, idx :usize, val :isize) {
 		self.mem[idx] = val;
 	}
 	
 	// Get a value from memory
-	#[allow(dead_code)]
 	pub fn get(self :&Interpreter, idx :usize) -> isize {
 		return self.mem[idx];
+	}
+	
+	// Set the next input value
+	pub fn set_input(self :&mut Interpreter, input :isize) {
+		self.next_input = Some(input);
+	}
+	
+	// Get and clear the outputs from the program
+	pub fn get_outputs(self :&mut Interpreter) -> Vec<isize> {
+		let mut output = Vec::new();
+		std::mem::swap(&mut output, &mut self.outputs);
+		return output;
 	}
 	
 	// Pretty print a program (but not that pretty)
@@ -56,8 +79,7 @@ impl Interpreter {
 	}
 	
 	// Step the program
-	#[allow(dead_code)]
-	pub fn step(self :&mut Interpreter) -> bool {
+	pub fn step(self :&mut Interpreter) -> StepResult {
 		// Read off the next instruction
 		let ins = self.mem[self.pc];
 		
@@ -124,21 +146,23 @@ impl Interpreter {
 			
 			// Input
 			3 => {
-				// For now this is always 1. Will need to make this
-				// a lambda/callback of some form
-				//let input = 1; // for day 5 part 1
-				let input = 5; // for day 5 part 2
-				println!("\t> {}", input);
-				
-				// Load the dest location
-				assert_eq!(operand_mode_0, OpMode::Position);
-				let d0 = self.mem[self.pc + 1] as usize;
-				
-				// Store it to memory
-				self.mem[d0] = input;
-				
-				// Increment to the next ins
-				self.pc += 2;
+				// Read the next queued input
+				if let Some(input) = self.next_input {
+					self.next_input = None;
+					
+					// Load the dest location
+					assert_eq!(operand_mode_0, OpMode::Position);
+					let d0 = self.mem[self.pc + 1] as usize;
+					
+					// Store it to memory
+					self.mem[d0] = input;
+					
+					// Increment to the next ins
+					self.pc += 2;
+				} else {
+					// No input ready, so return that we need one
+					return StepResult::Input;
+				}
 			},
 			
 			// Output
@@ -146,11 +170,9 @@ impl Interpreter {
 				// Load the source location
 				let s0 = self.mem[self.pc + 1];
 				
-				// Get the value requested
+				// Get the value requested and save it as an output
 				let val = read_operand(s0, operand_mode_0);
-				
-				// We can print this to stdout for now
-				println!("\t< {}", val);
+				self.outputs.push(val);
 				
 				// Increment to the next ins
 				self.pc += 2;
@@ -223,21 +245,25 @@ impl Interpreter {
 			// Break out
 			99 => {
 				self.pc += 1;
-				return true;
+				return StepResult::Break;
 			},
 			
 			// This shouldn't happen
 			_ => panic!("Unknown ins: {} at pc: {}", ins, self.pc),
 		}
 		
-		return false;
+		return StepResult::Continue;
 	}
 	
 	// Executes the program until a break is encountered
-	#[allow(dead_code)]
-	pub fn run(self :&mut Interpreter)
+	pub fn run(self :&mut Interpreter) -> StepResult
 	{
-		while !self.step() { }
+		loop {
+			let result = self.step();
+			if result != StepResult::Continue {
+				return result;
+			}
+		}
 	}
 }
 

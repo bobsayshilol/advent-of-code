@@ -29,7 +29,7 @@
 
 
 use std::error::Error;
-use super::intcode::Interpreter;
+use super::intcode::{Interpreter, StepResult};
 
 
 // Load the input into a buffer to be treated as Intcode RAM
@@ -45,33 +45,52 @@ fn load_input() -> String
 	return input;
 }
 
-fn run_part1()
+fn run_part1() -> isize
 {
 	// Load the program as provided
 	let mut program = Interpreter::load(&load_input());
 	
-	// TODO: should set the input to 1
-	
 	// Run it
-	program.run();
+	let result = program.run();
+	assert_eq!(result, StepResult::Input);
+	
+	// Set the input it wants
+	program.set_input(1);
+	
+	// Continue on
+	let result = program.run();
+	assert_eq!(result, StepResult::Break);
+	
+	// Return the last output value
+	let output = program.get_outputs();
+	return *output.last().unwrap();
 }
 
-fn run_part2()
+fn run_part2() -> isize
 {
 	// Load the program as provided
 	let mut program = Interpreter::load(&load_input());
 	
-	// TODO: should set the input to 5
-	
 	// Run it
-	program.run();
+	let result = program.run();
+	assert_eq!(result, StepResult::Input);
+	
+	// Set the input it wants
+	program.set_input(5);
+	
+	// Continue on
+	let result = program.run();
+	assert_eq!(result, StepResult::Break);
+	
+	// Return the single output
+	return program.get_outputs()[0];
 }
 
 
 pub fn main()
 {
 	println!("Day5:");
-	run_part1();
-	run_part2();
+	println!("\tPart1 = {}", run_part1());
+	println!("\tPart2 = {}", run_part2());
 }
 
