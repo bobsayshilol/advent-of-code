@@ -12,6 +12,16 @@
  * Whenever A orbits B and B orbits C, then A indirectly orbits C. This chain
  * can be any number of objects long: if A orbits B, B orbits C, and C orbits
  * D, then A indirectly orbits D.
+ *
+ *
+ * Part 2:
+ *
+ * Now, you just need to figure out how many orbital transfers you (YOU) need
+ * to take to get to Santa (SAN).
+ *
+ * You start at the object YOU are orbiting; your destination is the object SAN
+ * is orbiting. An orbital transfer lets you move from any object to an object
+ * orbiting or orbited by that object.
  */
 
 
@@ -129,11 +139,56 @@ fn count_orbits() -> usize
 }
 
 
+fn get_transfers() -> usize
+{
+	let com = load_inputs();
+	
+	// Find a path from <name> to COM
+	fn find_node(node :&Orbit, name :&str, path :&mut Vec<String>) -> bool {
+		// Go through all the children looking for it
+		let ref children = *node.children.borrow();
+		for child in children {
+			if child.name == name {
+				// We found it
+				path.push(node.name.clone());
+				return true;
+			}
+			else if find_node(&child, name, path) {
+				// A child node was in the path so we must be too
+				path.push(node.name.clone());
+				return true;
+			}
+		}
+		// The node wasn't found from us
+		return false;
+	};
+	
+	// First find a path from YOU to COM
+	let mut you = Vec::new();
+	assert!(find_node(&com, "YOU", &mut you));
+	
+	// Then find a path from SAN to COM
+	let mut san = Vec::new();
+	assert!(find_node(&com, "SAN", &mut san));
+	
+	// Now strip away the common path
+	while you.last() == san.last() {
+		you.pop();
+		san.pop();
+	}
+	
+	// The total distance between YOU and SAN is then these paths added
+	// together (plus the common node joining them that was stripped above,
+	// but we're looking for transfers so we remove one too to balance it)
+	return you.len() + san.len();
+}
+
+
 pub fn main()
 {
 	let part1 = count_orbits();
-	//let part2 = get_total_part2();
+	let part2 = get_transfers();
 	println!("Day6:");
 	println!("\tPart1 = {}", part1);
-	//println!("\tPart2 = {}", part2);
+	println!("\tPart2 = {}", part2);
 }
